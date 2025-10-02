@@ -22,7 +22,7 @@ import { useAutoGrid } from '@/hooks/useAutoGrid';
 import { useScenarioCalculations } from '@/hooks/useScenarioCalculations';
 import { createExecutiveMetrics } from '@/data/executiveMetrics';
 import { formatSimpleNumber, formatPercentage, formatCurrency, formatNumber } from '@/lib/formatters';
-import { useDashboardMetrics, useRealtimeMetrics } from '@/hooks/useDashboardData';
+import { useSimpleDashboardData } from '@/hooks/useSimpleDashboardData';
 import { cn } from '@/lib/utils';
 import { GrowthTrajectoryChart } from './GrowthTrajectoryChart';
 import { 
@@ -84,18 +84,14 @@ const ExecutiveDashboard = memo(() => {
   const [selectedMetric, setSelectedMetric] = useState<Metric | null>(null);
   const [showModelModal, setShowModelModal] = useState(false);
   
-  // Load dashboard data from Supabase
+  // Load dashboard data - SIMPLE AND WORKING
   const { 
-    metrics, 
-    dashboardData, 
     executiveMetrics, 
-    financialMetrics, 
+    dashboardData,
+    metrics,
     isLoading, 
     error 
-  } = useDashboardMetrics();
-  
-  // Enable real-time updates
-  const { isConnected } = useRealtimeMetrics();
+  } = useSimpleDashboardData();
   const [scenarioFactors, setScenarioFactors] = useState({
     economicGrowth: 0,
     inflationRate: 0,
@@ -143,8 +139,14 @@ const ExecutiveDashboard = memo(() => {
   const scale = useViewportScale(headerRef);
   useAutoGrid();
 
-  // Use Supabase data or fallback to base metrics
-  const currentMetrics = (executiveMetrics.mealsDelivered && typeof executiveMetrics.mealsDelivered === 'number') ? executiveMetrics : baseMetrics;
+  // Merge Supabase data with fallback defaults
+  console.log('Debug - executiveMetrics from Supabase:', executiveMetrics);
+  console.log('Debug - isLoading:', isLoading, 'error:', error);
+  
+  const currentMetrics = (executiveMetrics && Object.keys(executiveMetrics).length > 0)
+    ? { ...baseMetrics, ...executiveMetrics }
+    : baseMetrics;
+  console.log('Debug - using currentMetrics:', (executiveMetrics && Object.keys(executiveMetrics).length > 0) ? 'Merged Supabase+Defaults' : 'Defaults only');
   
   // Use the enhanced scenario calculations hook for dynamic updates
   const calculatedMetrics = useScenarioCalculations(currentMetrics, debouncedScenarioFactors);

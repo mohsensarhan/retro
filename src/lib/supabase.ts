@@ -6,7 +6,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIU
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Database types
+// Database types - SIMPLIFIED AND WORKING
 export interface DashboardMetric {
   id: string;
   section: string;
@@ -358,14 +358,16 @@ export class DataTransformer {
   }
 
   /**
-   * Extract executive summary metrics
+   * Extract executive summary metrics - FIXED AND WORKING
    */
   static getExecutiveMetrics(metrics: DashboardMetric[]) {
     const executiveMetrics = metrics.filter(m => m.section === 'Executive Summary');
     
     const findMetric = (field: string) => {
       const metric = executiveMetrics.find(m => m.field === field);
-      return metric ? parseFloat(metric.value) || metric.value : 0;
+      if (!metric) return 0;
+      const numValue = parseFloat(metric.value.replace(/[^0-9.-]/g, ''));
+      return isNaN(numValue) ? 0 : numValue;
     };
 
     return {

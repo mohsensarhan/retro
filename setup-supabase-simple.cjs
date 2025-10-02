@@ -203,3 +203,4 @@ setupSimpleDatabase().then(() => {
   console.error('Setup process failed:', error);
   process.exit(1);
 });
+
