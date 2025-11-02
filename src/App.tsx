@@ -1,7 +1,7 @@
-import { ExecutiveCommandCenter } from './components/ExecutiveCommandCenter'
+import { ExecutiveDashboard } from './components/ExecutiveDashboard'
 
 function App() {
-  return <ExecutiveCommandCenter />
+  return <ExecutiveDashboard />
 }
 
 export default App
