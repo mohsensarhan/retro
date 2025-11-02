@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { User, Task, Goal, Recognition, Feedback, OneOnOne, teamflectApi, TeamflectApiError } from '@/lib/teamflect-api'
+import { User, Task, Goal, Recognition, Feedback, teamflectApi, TeamflectApiError } from '@/lib/teamflect-api'
 
 interface DashboardState {
   // Data - REAL API ONLY
@@ -8,7 +8,6 @@ interface DashboardState {
   goals: Goal[]
   recognitions: Recognition[]
   feedback: Feedback[]
-  oneOnOnes: OneOnOne[]
 
   // UI State
   isLoading: boolean
@@ -16,7 +15,7 @@ interface DashboardState {
   selectedView: 'overview' | 'tasks' | 'goals' | 'team' | 'recognitions'
   selectedUserId: string | null
 
-  // Actions - Full CRUD
+  // Actions
   fetchAllData: () => Promise<void>
   refreshData: () => Promise<void>
 
@@ -24,23 +23,16 @@ interface DashboardState {
   setSelectedView: (view: DashboardState['selectedView']) => void
   setSelectedUser: (userId: string | null) => void
 
-  // Task CRUD
-  createTask: (task: Partial<Task>) => Promise<Task>
-  updateTask: (taskId: string, updates: Partial<Task>) => Promise<Task>
-  deleteTask: (taskId: string) => Promise<void>
-  completeTask: (taskId: string) => Promise<Task>
+  // Goal CRUD (available in API)
+  createGoal: (goalData: any) => Promise<Goal>
+  updateGoalProgress: (goalId: string, newValue: number, comment?: string) => Promise<void>
+  addGoalComment: (goalId: string, comment: string) => Promise<void>
 
-  // Goal CRUD
-  createGoal: (goal: Partial<Goal>) => Promise<Goal>
-  updateGoal: (goalId: string, updates: Partial<Goal>) => Promise<Goal>
-  updateGoalProgress: (goalId: string, progress: number) => Promise<Goal>
-  deleteGoal: (goalId: string) => Promise<void>
+  // Recognition (available in API)
+  createRecognition: (recipientUPNorIds: string[], message: string) => Promise<void>
 
-  // Recognition CRUD
-  createRecognition: (recognition: Partial<Recognition>) => Promise<Recognition>
-
-  // Feedback CRUD
-  createFeedback: (feedback: Partial<Feedback>) => Promise<Feedback>
+  // Feedback (available in API)
+  sendFeedbackRequest: (data: any) => Promise<void>
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
@@ -50,7 +42,6 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   goals: [],
   recognitions: [],
   feedback: [],
-  oneOnOnes: [],
   isLoading: false,
   error: null,
   selectedView: 'overview',
@@ -63,14 +54,44 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     try {
       console.log('[Store] Fetching all data from Teamflect API...')
 
-      const [users, tasks, goals, recognitions, feedback, oneOnOnes] = await Promise.all([
-        teamflectApi.users.getAll(),
-        teamflectApi.tasks.getAll(),
-        teamflectApi.goals.getAll(),
-        teamflectApi.recognitions.getAll(),
-        teamflectApi.feedback.getAll(),
-        teamflectApi.oneOnOnes.getAll(),
+      const [tasks, goals, recognitions, feedback] = await Promise.all([
+        teamflectApi.tasks.getAll().catch(err => {
+          console.warn('Tasks fetch failed:', err)
+          return []
+        }),
+        teamflectApi.goals.getAll().catch(err => {
+          console.warn('Goals fetch failed:', err)
+          return []
+        }),
+        teamflectApi.recognitions.search({}).catch(err => {
+          console.warn('Recognitions fetch failed:', err)
+          return []
+        }),
+        teamflectApi.feedback.getAll().catch(err => {
+          console.warn('Feedback fetch failed:', err)
+          return []
+        }),
       ])
+
+      // Extract users from goals (owners) since there's no direct users endpoint
+      const usersMap = new Map<string, User>()
+      goals.forEach(goal => {
+        goal.owners?.forEach(owner => {
+          if (owner.userPrincipalName) {
+            usersMap.set(owner.userPrincipalName, owner)
+          }
+        })
+        if (goal.createdBy?.userPrincipalName) {
+          usersMap.set(goal.createdBy.userPrincipalName, {
+            userPrincipalName: goal.createdBy.userPrincipalName,
+            displayName: goal.createdBy.displayName,
+            oid: goal.createdBy.oid,
+            name: goal.createdBy.displayName,
+          } as User)
+        }
+      })
+
+      const users = Array.from(usersMap.values())
 
       console.log('[Store] Data loaded successfully:', {
         users: users.length,
@@ -78,7 +99,6 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         goals: goals.length,
         recognitions: recognitions.length,
         feedback: feedback.length,
-        oneOnOnes: oneOnOnes.length,
       })
 
       set({
@@ -87,7 +107,6 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         goals,
         recognitions,
         feedback,
-        oneOnOnes,
         isLoading: false,
         error: null,
       })
@@ -117,60 +136,10 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
   setSelectedUser: (userId) => set({ selectedUserId: userId }),
 
-  // ==================== TASK CRUD ====================
-  createTask: async (taskData) => {
-    try {
-      const newTask = await teamflectApi.tasks.create(taskData as any)
-      set((state) => ({ tasks: [...state.tasks, newTask] }))
-      return newTask
-    } catch (error) {
-      console.error('[Store] Error creating task:', error)
-      throw error
-    }
-  },
-
-  updateTask: async (taskId, updates) => {
-    try {
-      const updatedTask = await teamflectApi.tasks.update(taskId, updates)
-      set((state) => ({
-        tasks: state.tasks.map((t) => (t.id === taskId ? updatedTask : t)),
-      }))
-      return updatedTask
-    } catch (error) {
-      console.error('[Store] Error updating task:', error)
-      throw error
-    }
-  },
-
-  deleteTask: async (taskId) => {
-    try {
-      await teamflectApi.tasks.delete(taskId)
-      set((state) => ({
-        tasks: state.tasks.filter((t) => t.id !== taskId),
-      }))
-    } catch (error) {
-      console.error('[Store] Error deleting task:', error)
-      throw error
-    }
-  },
-
-  completeTask: async (taskId) => {
-    try {
-      const updatedTask = await teamflectApi.tasks.complete(taskId)
-      set((state) => ({
-        tasks: state.tasks.map((t) => (t.id === taskId ? updatedTask : t)),
-      }))
-      return updatedTask
-    } catch (error) {
-      console.error('[Store] Error completing task:', error)
-      throw error
-    }
-  },
-
   // ==================== GOAL CRUD ====================
   createGoal: async (goalData) => {
     try {
-      const newGoal = await teamflectApi.goals.create(goalData as any)
+      const newGoal = await teamflectApi.goals.create(goalData)
       set((state) => ({ goals: [...state.goals, newGoal] }))
       return newGoal
     } catch (error) {
@@ -179,50 +148,37 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     }
   },
 
-  updateGoal: async (goalId, updates) => {
+  updateGoalProgress: async (goalId, newValue, comment) => {
     try {
-      const updatedGoal = await teamflectApi.goals.update(goalId, updates)
-      set((state) => ({
-        goals: state.goals.map((g) => (g.id === goalId ? updatedGoal : g)),
-      }))
-      return updatedGoal
-    } catch (error) {
-      console.error('[Store] Error updating goal:', error)
-      throw error
-    }
-  },
-
-  updateGoalProgress: async (goalId, progress) => {
-    try {
-      const updatedGoal = await teamflectApi.goals.updateProgress(goalId, progress)
-      set((state) => ({
-        goals: state.goals.map((g) => (g.id === goalId ? updatedGoal : g)),
-      }))
-      return updatedGoal
+      await teamflectApi.goals.updateProgress({ goalId, newValue, comment })
+      // Refresh goals after update
+      const goals = await teamflectApi.goals.getAll()
+      set({ goals })
     } catch (error) {
       console.error('[Store] Error updating goal progress:', error)
       throw error
     }
   },
 
-  deleteGoal: async (goalId) => {
+  addGoalComment: async (goalId, comment) => {
     try {
-      await teamflectApi.goals.delete(goalId)
-      set((state) => ({
-        goals: state.goals.filter((g) => g.id !== goalId),
-      }))
+      await teamflectApi.goals.addComment({ goalId, comment })
+      // Refresh goals after comment
+      const goals = await teamflectApi.goals.getAll()
+      set({ goals })
     } catch (error) {
-      console.error('[Store] Error deleting goal:', error)
+      console.error('[Store] Error adding goal comment:', error)
       throw error
     }
   },
 
   // ==================== RECOGNITION CRUD ====================
-  createRecognition: async (recognitionData) => {
+  createRecognition: async (recipientUPNorIds, message) => {
     try {
-      const newRecognition = await teamflectApi.recognitions.create(recognitionData as any)
-      set((state) => ({ recognitions: [...state.recognitions, newRecognition] }))
-      return newRecognition
+      await teamflectApi.recognitions.create({ recipientUPNorIds, message })
+      // Refresh recognitions
+      const recognitions = await teamflectApi.recognitions.search({})
+      set({ recognitions })
     } catch (error) {
       console.error('[Store] Error creating recognition:', error)
       throw error
@@ -230,13 +186,14 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   },
 
   // ==================== FEEDBACK CRUD ====================
-  createFeedback: async (feedbackData) => {
+  sendFeedbackRequest: async (data) => {
     try {
-      const newFeedback = await teamflectApi.feedback.create(feedbackData as any)
-      set((state) => ({ feedback: [...state.feedback, newFeedback] }))
-      return newFeedback
+      await teamflectApi.feedback.sendRequest(data)
+      // Refresh feedback
+      const feedback = await teamflectApi.feedback.getAll()
+      set({ feedback })
     } catch (error) {
-      console.error('[Store] Error creating feedback:', error)
+      console.error('[Store] Error sending feedback request:', error)
       throw error
     }
   },
