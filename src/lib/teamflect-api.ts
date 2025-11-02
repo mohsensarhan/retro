@@ -4,8 +4,9 @@
  * Complete CRUD operations for all Teamflect API endpoints
  * NO MOCK DATA - Real API only
  *
- * API Base: https://api.teamflect.com/api/v1
- * Auth: x-api-key header (NOT Bearer)
+ * API Base: https://teamflect-app-prod-us.azurewebsites.net/api/v1
+ * Swagger: https://teamflect-app-prod-us.azurewebsites.net/api/v1/#/
+ * Auth: MULTIPLE STRATEGIES - waiting for user confirmation
  *
  * Available Endpoints:
  * - Users: GET /users, GET /users/{id}
@@ -17,7 +18,7 @@
  * - Reviews: GET /reviews
  */
 
-const API_BASE_URL = 'https://api.teamflect.com/api/v1'
+const API_BASE_URL = 'https://teamflect-app-prod-us.azurewebsites.net/api/v1'
 
 // Get API credentials
 const getApiKey = (): string => {
@@ -59,12 +60,21 @@ async function apiRequest<T>(endpoint: string, options: ApiRequestOptions = {}):
 
   const apiKey = getApiKey()
 
-  // Headers WITHOUT Bearer - use x-api-key or api-key header
+  // Split credentials: tenantId:apiKey format
+  const [tenantId, apiKeyPart] = apiKey.includes(':') ? apiKey.split(':') : [apiKey, apiKey]
+
+  // Try multiple auth strategies - will be refined once user confirms correct method
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'x-api-key': apiKey, // Primary method
-    'api-key': apiKey,    // Backup
+    // Strategy 1: Separate tenant and API key
+    'X-Tenant-Id': tenantId,
+    'X-API-Key': apiKeyPart,
+    // Strategy 2: Combined key
+    'x-api-key': apiKey,
+    // Strategy 3: Lowercase variants
+    'tenantid': tenantId,
+    'apikey': apiKeyPart,
   }
 
   const config: RequestInit = {
