@@ -58,20 +58,10 @@ async function apiRequest<T>(endpoint: string, options: ApiRequestOptions = {}):
 
   const apiKey = getApiKey()
 
-  // Split credentials: tenantId:apiKey format
-  const [tenantId, apiKeyPart] = apiKey.includes(':') ? apiKey.split(':') : [apiKey, apiKey]
-
-  // Try multiple auth strategies based on common API patterns
+  // Use x-api-key header as confirmed by user
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    // Strategy 1: Separate tenant and API key
-    'X-Tenant-Id': tenantId,
-    'X-API-Key': apiKeyPart,
-    // Strategy 2: Combined key
     'x-api-key': apiKey,
-    // Strategy 3: Authorization header
-    'Authorization': `ApiKey ${apiKey}`,
+    'Content-Type': 'application/json',
   }
 
   const config: RequestInit = {
