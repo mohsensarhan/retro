@@ -1,45 +1,71 @@
 /**
- * Teamflect API Integration Layer
+ * Teamflect API Integration Layer - PRODUCTION
  *
- * API Credentials Format: tenantId:apiKey
- * Base URL: https://api.teamflect.com/api/v1
+ * Complete CRUD operations for all Teamflect API endpoints
+ * NO MOCK DATA - Real API only
+ *
+ * API Base: https://api.teamflect.com/api/v1
+ * Auth: x-api-key header (NOT Bearer)
  *
  * Available Endpoints:
- * - /users - Get all users in the organization
- * - /tasks - Get all tasks
- * - /goals - Get all goals/OKRs
- * - /recognitions - Get all recognitions
- * - /feedback - Get all feedback
+ * - Users: GET /users, GET /users/{id}
+ * - Tasks: GET/POST/PUT/DELETE /tasks
+ * - Goals: GET/POST/PUT/DELETE /goals
+ * - Recognitions: GET/POST /recognitions
+ * - Feedback: GET/POST /feedback
+ * - 1-on-1s: GET/POST /one-on-ones
+ * - Reviews: GET /reviews
  */
 
 const API_BASE_URL = 'https://api.teamflect.com/api/v1'
-const API_CREDENTIALS = '4d73e4a8ce78:67cd7212-b035-4b25-a12b-26c840df469f'
+
+// Get API credentials
+const getApiKey = (): string => {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TEAMFLECT_API_KEY) {
+    return import.meta.env.VITE_TEAMFLECT_API_KEY
+  }
+  return '4d73e4a8ce78:67cd7212-b035-4b25-a12b-26c840df469f'
+}
 
 interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: any
-  params?: Record<string, string>
+  params?: Record<string, string | number | boolean>
+}
+
+export class TeamflectApiError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+    public response?: any
+  ) {
+    super(message)
+    this.name = 'TeamflectApiError'
+  }
 }
 
 async function apiRequest<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
   const { method = 'GET', body, params } = options
 
-  // Build URL with query parameters
+  // Build URL
   const url = new URL(`${API_BASE_URL}${endpoint}`)
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
-      url.searchParams.append(key, value)
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, String(value))
+      }
     })
   }
 
-  // Build headers - trying multiple auth methods based on API documentation
+  const apiKey = getApiKey()
+
+  // Headers WITHOUT Bearer - use x-api-key or api-key header
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'x-api-key': apiKey, // Primary method
+    'api-key': apiKey,    // Backup
   }
-
-  // Try Bearer token format (most common for modern APIs)
-  headers['Authorization'] = `Bearer ${API_CREDENTIALS}`
 
   const config: RequestInit = {
     method,
@@ -48,59 +74,70 @@ async function apiRequest<T>(endpoint: string, options: ApiRequestOptions = {}):
   }
 
   try {
+    console.log(`[API] ${method} ${endpoint}`, params || '')
     const response = await fetch(url.toString(), config)
 
     if (!response.ok) {
-      // If Bearer fails, try Basic Auth
-      if (response.status === 401 || response.status === 403) {
-        const basicAuthHeaders = {
-          ...headers,
-          'Authorization': `Basic ${btoa(API_CREDENTIALS)}`,
-        }
+      const errorText = await response.text()
+      console.error(`[API Error] ${response.status}:`, errorText)
 
-        const retryResponse = await fetch(url.toString(), {
-          ...config,
-          headers: basicAuthHeaders,
-        })
-
-        if (!retryResponse.ok) {
-          throw new Error(`API request failed: ${retryResponse.status} ${retryResponse.statusText}`)
-        }
-
-        return await retryResponse.json()
-      }
-
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      throw new TeamflectApiError(
+        `API Error: ${response.status} ${response.statusText}`,
+        response.status,
+        errorText
+      )
     }
 
-    return await response.json()
+    const contentType = response.headers.get('content-type')
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json()
+      console.log(`[API Success] ${method} ${endpoint}:`, Array.isArray(data) ? `${data.length} items` : 'OK')
+      return data
+    }
+
+    return {} as T
   } catch (error) {
-    console.error('API request error:', error)
-    throw error
+    if (error instanceof TeamflectApiError) {
+      throw error
+    }
+    console.error('[API Network Error]:', error)
+    throw new TeamflectApiError(
+      `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
   }
 }
 
-// Type definitions based on Teamflect API structure
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
 export interface User {
   id: string
   email: string
   displayName: string
+  firstName?: string
+  lastName?: string
   jobTitle?: string
   department?: string
-  managerId?: string
+  managerId?: string | null
   photoUrl?: string
   isActive: boolean
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface Task {
   id: string
   title: string
   description?: string
-  status: 'todo' | 'in_progress' | 'completed' | 'cancelled'
+  status: 'not_started' | 'in_progress' | 'completed' | 'cancelled'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   assigneeId: string
   assignerId: string
   dueDate?: string
+  startDate?: string
+  completedDate?: string
+  tags?: string[]
   createdAt: string
   updatedAt: string
 }
@@ -110,21 +147,28 @@ export interface Goal {
   title: string
   description?: string
   type: 'individual' | 'team' | 'company'
-  status: 'not_started' | 'on_track' | 'at_risk' | 'achieved'
+  status: 'not_started' | 'on_track' | 'at_risk' | 'off_track' | 'achieved' | 'cancelled'
   progress: number
   ownerId: string
+  parentGoalId?: string | null
   startDate: string
   endDate: string
   keyResults?: KeyResult[]
+  alignedGoals?: string[]
+  tags?: string[]
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface KeyResult {
   id: string
   title: string
+  description?: string
   progress: number
   target: number
   current: number
   unit: string
+  status?: 'on_track' | 'at_risk' | 'off_track' | 'achieved'
 }
 
 export interface Recognition {
@@ -132,7 +176,8 @@ export interface Recognition {
   senderId: string
   receiverId: string
   message: string
-  type: 'praise' | 'thank_you' | 'achievement'
+  type?: 'praise' | 'thank_you' | 'achievement' | 'teamwork'
+  isPublic?: boolean
   createdAt: string
 }
 
@@ -141,146 +186,210 @@ export interface Feedback {
   senderId: string
   receiverId: string
   content: string
-  type: '1on1' | 'performance_review' | 'peer_feedback'
+  type: 'one_on_one' | 'performance_review' | 'peer_feedback' | 'upward_feedback'
+  isPrivate?: boolean
   createdAt: string
+  updatedAt?: string
 }
 
-// API Methods
+export interface OneOnOne {
+  id: string
+  participantIds: string[]
+  title?: string
+  scheduledDate: string
+  duration?: number
+  status: 'scheduled' | 'completed' | 'cancelled'
+  notes?: string
+  actionItems?: ActionItem[]
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface ActionItem {
+  id: string
+  description: string
+  ownerId: string
+  dueDate?: string
+  isCompleted: boolean
+}
+
+export interface Review {
+  id: string
+  reviewerId: string
+  revieweeId: string
+  cycle: string
+  status: 'not_started' | 'in_progress' | 'completed'
+  overallRating?: number
+  competencies?: CompetencyRating[]
+  comments?: string
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface CompetencyRating {
+  competency: string
+  rating: number
+  comments?: string
+}
+
+// ============================================================================
+// API METHODS - COMPLETE CRUD FOR ALL ENDPOINTS
+// ============================================================================
+
 export const teamflectApi = {
-  // Users
-  getUsers: () => apiRequest<User[]>('/users'),
-  getUser: (userId: string) => apiRequest<User>(`/users/${userId}`),
+  // ==================== USERS ====================
+  users: {
+    getAll: () => apiRequest<User[]>('/users'),
 
-  // Tasks
-  getTasks: (params?: { assigneeId?: string; status?: string }) =>
-    apiRequest<Task[]>('/tasks', { params: params as any }),
-  createTask: (task: Partial<Task>) =>
-    apiRequest<Task>('/tasks', { method: 'POST', body: task }),
-  updateTask: (taskId: string, updates: Partial<Task>) =>
-    apiRequest<Task>(`/tasks/${taskId}`, { method: 'PATCH', body: updates }),
-  deleteTask: (taskId: string) =>
-    apiRequest<void>(`/tasks/${taskId}`, { method: 'DELETE' }),
+    getById: (userId: string) => apiRequest<User>(`/users/${userId}`),
 
-  // Goals
-  getGoals: (params?: { ownerId?: string; type?: string }) =>
-    apiRequest<Goal[]>('/goals', { params: params as any }),
-  getGoal: (goalId: string) => apiRequest<Goal>(`/goals/${goalId}`),
-  createGoal: (goal: Partial<Goal>) =>
-    apiRequest<Goal>('/goals', { method: 'POST', body: goal }),
-  updateGoal: (goalId: string, updates: Partial<Goal>) =>
-    apiRequest<Goal>(`/goals/${goalId}`, { method: 'PATCH', body: updates }),
+    getByDepartment: (department: string) =>
+      apiRequest<User[]>('/users', { params: { department } }),
 
-  // Recognitions
-  getRecognitions: (params?: { receiverId?: string }) =>
-    apiRequest<Recognition[]>('/recognitions', { params: params as any }),
-  createRecognition: (recognition: Partial<Recognition>) =>
-    apiRequest<Recognition>('/recognitions', { method: 'POST', body: recognition }),
+    getDirectReports: (managerId: string) =>
+      apiRequest<User[]>('/users', { params: { managerId } }),
 
-  // Feedback
-  getFeedback: (params?: { receiverId?: string }) =>
-    apiRequest<Feedback[]>('/feedback', { params: params as any }),
-}
+    search: (query: string) =>
+      apiRequest<User[]>('/users', { params: { search: query } }),
+  },
 
-// Mock data for development and testing
-export const mockData = {
-  users: [
-    {
-      id: '1',
-      email: 'ceo@efb.org',
-      displayName: 'Mohsen Sarhan',
-      jobTitle: 'Chief Executive Officer',
-      department: 'Executive',
-      isActive: true,
-    },
-    {
-      id: '2',
-      email: 'programs@efb.org',
-      displayName: 'Ahmed Hassan',
-      jobTitle: 'Director of Programs',
-      department: 'Programs',
-      managerId: '1',
-      isActive: true,
-    },
-    {
-      id: '3',
-      email: 'operations@efb.org',
-      displayName: 'Fatima Ali',
-      jobTitle: 'Director of Operations',
-      department: 'Operations',
-      managerId: '1',
-      isActive: true,
-    },
-    {
-      id: '4',
-      email: 'fundraising@efb.org',
-      displayName: 'Omar Khalil',
-      jobTitle: 'Director of Fundraising',
-      department: 'Development',
-      managerId: '1',
-      isActive: true,
-    },
-  ] as User[],
+  // ==================== TASKS ====================
+  tasks: {
+    getAll: (params?: {
+      assigneeId?: string
+      assignerId?: string
+      status?: Task['status']
+      priority?: Task['priority']
+    }) => apiRequest<Task[]>('/tasks', { params: params as any }),
 
-  tasks: [
-    {
-      id: '1',
-      title: 'Q1 Fundraising Campaign Launch',
-      description: 'Launch the Q1 fundraising campaign targeting corporate partnerships',
-      status: 'in_progress',
-      priority: 'high',
-      assigneeId: '4',
-      assignerId: '1',
-      dueDate: '2025-11-15',
-      createdAt: '2025-11-01',
-      updatedAt: '2025-11-02',
-    },
-    {
-      id: '2',
-      title: 'Food Distribution Network Expansion',
-      description: 'Expand distribution network to 5 new regions',
-      status: 'in_progress',
-      priority: 'urgent',
-      assigneeId: '3',
-      assignerId: '1',
-      dueDate: '2025-11-30',
-      createdAt: '2025-10-15',
-      updatedAt: '2025-11-02',
-    },
-  ] as Task[],
+    getById: (taskId: string) => apiRequest<Task>(`/tasks/${taskId}`),
 
-  goals: [
-    {
-      id: '1',
-      title: 'Reach 1 Million Beneficiaries',
-      description: 'Expand our reach to serve 1 million beneficiaries by end of year',
-      type: 'company',
-      status: 'on_track',
-      progress: 65,
-      ownerId: '1',
-      startDate: '2025-01-01',
-      endDate: '2025-12-31',
-    },
-    {
-      id: '2',
-      title: 'Double Fundraising Revenue',
-      description: 'Increase fundraising revenue to $10M',
-      type: 'team',
-      status: 'on_track',
-      progress: 45,
-      ownerId: '4',
-      startDate: '2025-01-01',
-      endDate: '2025-12-31',
-    },
-  ] as Goal[],
+    create: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) =>
+      apiRequest<Task>('/tasks', { method: 'POST', body: task }),
 
-  recognitions: [
-    {
-      id: '1',
-      senderId: '1',
-      receiverId: '2',
-      message: 'Outstanding work on the recent food distribution campaign!',
-      type: 'praise',
-      createdAt: '2025-11-01',
-    },
-  ] as Recognition[],
+    update: (taskId: string, updates: Partial<Task>) =>
+      apiRequest<Task>(`/tasks/${taskId}`, { method: 'PUT', body: updates }),
+
+    delete: (taskId: string) =>
+      apiRequest<void>(`/tasks/${taskId}`, { method: 'DELETE' }),
+
+    complete: (taskId: string) =>
+      apiRequest<Task>(`/tasks/${taskId}`, {
+        method: 'PUT',
+        body: { status: 'completed', completedDate: new Date().toISOString() },
+      }),
+
+    assign: (taskId: string, assigneeId: string) =>
+      apiRequest<Task>(`/tasks/${taskId}`, {
+        method: 'PUT',
+        body: { assigneeId },
+      }),
+  },
+
+  // ==================== GOALS ====================
+  goals: {
+    getAll: (params?: {
+      ownerId?: string
+      type?: Goal['type']
+      status?: Goal['status']
+    }) => apiRequest<Goal[]>('/goals', { params: params as any }),
+
+    getById: (goalId: string) => apiRequest<Goal>(`/goals/${goalId}`),
+
+    getHierarchy: (parentGoalId?: string) =>
+      apiRequest<Goal[]>('/goals', {
+        params: { parentGoalId: parentGoalId || '' } as any,
+      }),
+
+    getCompanyGoals: () =>
+      apiRequest<Goal[]>('/goals', { params: { type: 'company' } }),
+
+    getTeamGoals: () =>
+      apiRequest<Goal[]>('/goals', { params: { type: 'team' } }),
+
+    create: (goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) =>
+      apiRequest<Goal>('/goals', { method: 'POST', body: goal }),
+
+    update: (goalId: string, updates: Partial<Goal>) =>
+      apiRequest<Goal>(`/goals/${goalId}`, { method: 'PUT', body: updates }),
+
+    updateProgress: (goalId: string, progress: number) =>
+      apiRequest<Goal>(`/goals/${goalId}`, {
+        method: 'PUT',
+        body: { progress },
+      }),
+
+    delete: (goalId: string) =>
+      apiRequest<void>(`/goals/${goalId}`, { method: 'DELETE' }),
+  },
+
+  // ==================== RECOGNITIONS ====================
+  recognitions: {
+    getAll: (params?: { receiverId?: string; senderId?: string }) =>
+      apiRequest<Recognition[]>('/recognitions', { params: params as any }),
+
+    getById: (recognitionId: string) =>
+      apiRequest<Recognition>(`/recognitions/${recognitionId}`),
+
+    create: (recognition: Omit<Recognition, 'id' | 'createdAt'>) =>
+      apiRequest<Recognition>('/recognitions', {
+        method: 'POST',
+        body: recognition,
+      }),
+
+    getRecent: (limit: number = 10) =>
+      apiRequest<Recognition[]>('/recognitions', { params: { limit } }),
+  },
+
+  // ==================== FEEDBACK ====================
+  feedback: {
+    getAll: (params?: { receiverId?: string; senderId?: string; type?: Feedback['type'] }) =>
+      apiRequest<Feedback[]>('/feedback', { params: params as any }),
+
+    getById: (feedbackId: string) =>
+      apiRequest<Feedback>(`/feedback/${feedbackId}`),
+
+    create: (feedback: Omit<Feedback, 'id' | 'createdAt' | 'updatedAt'>) =>
+      apiRequest<Feedback>('/feedback', { method: 'POST', body: feedback }),
+  },
+
+  // ==================== ONE-ON-ONES ====================
+  oneOnOnes: {
+    getAll: (userId?: string) =>
+      apiRequest<OneOnOne[]>('/one-on-ones', {
+        params: userId ? { userId } : undefined,
+      }),
+
+    getById: (oneOnOneId: string) =>
+      apiRequest<OneOnOne>(`/one-on-ones/${oneOnOneId}`),
+
+    create: (oneOnOne: Omit<OneOnOne, 'id' | 'createdAt' | 'updatedAt'>) =>
+      apiRequest<OneOnOne>('/one-on-ones', {
+        method: 'POST',
+        body: oneOnOne,
+      }),
+
+    update: (oneOnOneId: string, updates: Partial<OneOnOne>) =>
+      apiRequest<OneOnOne>(`/one-on-ones/${oneOnOneId}`, {
+        method: 'PUT',
+        body: updates,
+      }),
+
+    getUpcoming: () =>
+      apiRequest<OneOnOne[]>('/one-on-ones', {
+        params: { status: 'scheduled' },
+      }),
+  },
+
+  // ==================== REVIEWS ====================
+  reviews: {
+    getAll: (params?: { revieweeId?: string; cycle?: string }) =>
+      apiRequest<Review[]>('/reviews', { params: params as any }),
+
+    getById: (reviewId: string) =>
+      apiRequest<Review>(`/reviews/${reviewId}`),
+
+    getMy: (userId: string) =>
+      apiRequest<Review[]>('/reviews', { params: { revieweeId: userId } }),
+  },
 }

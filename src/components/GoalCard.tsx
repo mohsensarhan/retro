@@ -16,7 +16,9 @@ const statusConfig = {
   not_started: { color: 'default', icon: Target, label: 'Not Started' },
   on_track: { color: 'success', icon: TrendingUp, label: 'On Track' },
   at_risk: { color: 'warning', icon: AlertTriangle, label: 'At Risk' },
+  off_track: { color: 'destructive', icon: AlertTriangle, label: 'Off Track' },
   achieved: { color: 'success', icon: Target, label: 'Achieved' },
+  cancelled: { color: 'default', icon: Target, label: 'Cancelled' },
 } as const
 
 export function GoalCard({ goal, delay = 0, onClick }: GoalCardProps) {

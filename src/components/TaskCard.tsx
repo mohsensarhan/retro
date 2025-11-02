@@ -22,7 +22,7 @@ const priorityColors = {
 } as const
 
 const statusLabels = {
-  todo: 'To Do',
+  not_started: 'To Do',
   in_progress: 'In Progress',
   completed: 'Completed',
   cancelled: 'Cancelled',

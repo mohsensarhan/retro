@@ -1,149 +1,243 @@
 import { create } from 'zustand'
-import { User, Task, Goal, Recognition, teamflectApi, mockData } from '@/lib/teamflect-api'
+import { User, Task, Goal, Recognition, Feedback, OneOnOne, teamflectApi, TeamflectApiError } from '@/lib/teamflect-api'
 
 interface DashboardState {
-  // Data
+  // Data - REAL API ONLY
   users: User[]
   tasks: Task[]
   goals: Goal[]
   recognitions: Recognition[]
+  feedback: Feedback[]
+  oneOnOnes: OneOnOne[]
 
   // UI State
   isLoading: boolean
   error: string | null
-  selectedView: 'overview' | 'tasks' | 'goals' | 'team'
+  selectedView: 'overview' | 'tasks' | 'goals' | 'team' | 'recognitions'
   selectedUserId: string | null
-  useMockData: boolean
 
-  // Actions
+  // Actions - Full CRUD
   fetchAllData: () => Promise<void>
-  setSelectedView: (view: 'overview' | 'tasks' | 'goals' | 'team') => void
+  refreshData: () => Promise<void>
+
+  // View management
+  setSelectedView: (view: DashboardState['selectedView']) => void
   setSelectedUser: (userId: string | null) => void
-  createTask: (task: Partial<Task>) => Promise<void>
-  updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>
-  toggleMockData: () => void
+
+  // Task CRUD
+  createTask: (task: Partial<Task>) => Promise<Task>
+  updateTask: (taskId: string, updates: Partial<Task>) => Promise<Task>
+  deleteTask: (taskId: string) => Promise<void>
+  completeTask: (taskId: string) => Promise<Task>
+
+  // Goal CRUD
+  createGoal: (goal: Partial<Goal>) => Promise<Goal>
+  updateGoal: (goalId: string, updates: Partial<Goal>) => Promise<Goal>
+  updateGoalProgress: (goalId: string, progress: number) => Promise<Goal>
+  deleteGoal: (goalId: string) => Promise<void>
+
+  // Recognition CRUD
+  createRecognition: (recognition: Partial<Recognition>) => Promise<Recognition>
+
+  // Feedback CRUD
+  createFeedback: (feedback: Partial<Feedback>) => Promise<Feedback>
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
-  // Initial state
-  users: mockData.users,
-  tasks: mockData.tasks,
-  goals: mockData.goals,
-  recognitions: mockData.recognitions,
+  // Initial state - EMPTY until API loads
+  users: [],
+  tasks: [],
+  goals: [],
+  recognitions: [],
+  feedback: [],
+  oneOnOnes: [],
   isLoading: false,
   error: null,
   selectedView: 'overview',
   selectedUserId: null,
-  useMockData: true, // Start with mock data for development
 
-  // Fetch all data
+  // ==================== FETCH ALL DATA ====================
   fetchAllData: async () => {
-    const { useMockData } = get()
-
-    if (useMockData) {
-      // Use mock data
-      set({
-        users: mockData.users,
-        tasks: mockData.tasks,
-        goals: mockData.goals,
-        recognitions: mockData.recognitions,
-        isLoading: false,
-        error: null,
-      })
-      return
-    }
-
     set({ isLoading: true, error: null })
 
     try {
-      const [users, tasks, goals, recognitions] = await Promise.all([
-        teamflectApi.getUsers().catch(() => mockData.users),
-        teamflectApi.getTasks().catch(() => mockData.tasks),
-        teamflectApi.getGoals().catch(() => mockData.goals),
-        teamflectApi.getRecognitions().catch(() => mockData.recognitions),
+      console.log('[Store] Fetching all data from Teamflect API...')
+
+      const [users, tasks, goals, recognitions, feedback, oneOnOnes] = await Promise.all([
+        teamflectApi.users.getAll(),
+        teamflectApi.tasks.getAll(),
+        teamflectApi.goals.getAll(),
+        teamflectApi.recognitions.getAll(),
+        teamflectApi.feedback.getAll(),
+        teamflectApi.oneOnOnes.getAll(),
       ])
+
+      console.log('[Store] Data loaded successfully:', {
+        users: users.length,
+        tasks: tasks.length,
+        goals: goals.length,
+        recognitions: recognitions.length,
+        feedback: feedback.length,
+        oneOnOnes: oneOnOnes.length,
+      })
 
       set({
         users,
         tasks,
         goals,
         recognitions,
+        feedback,
+        oneOnOnes,
         isLoading: false,
         error: null,
       })
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      console.error('[Store] Error fetching data:', error)
+
+      const errorMessage =
+        error instanceof TeamflectApiError
+          ? `API Error (${error.status}): ${error.message}`
+          : `Failed to load data: ${error instanceof Error ? error.message : 'Unknown error'}`
+
       set({
-        error: 'Failed to load dashboard data. Using mock data.',
+        error: errorMessage,
         isLoading: false,
-        users: mockData.users,
-        tasks: mockData.tasks,
-        goals: mockData.goals,
-        recognitions: mockData.recognitions,
       })
+
+      throw error
     }
   },
 
+  refreshData: async () => {
+    await get().fetchAllData()
+  },
+
+  // ==================== VIEW MANAGEMENT ====================
   setSelectedView: (view) => set({ selectedView: view }),
 
   setSelectedUser: (userId) => set({ selectedUserId: userId }),
 
-  createTask: async (task) => {
-    const { useMockData, tasks } = get()
-
-    if (useMockData) {
-      // Mock creation
-      const newTask: Task = {
-        id: String(Date.now()),
-        title: task.title || '',
-        description: task.description,
-        status: task.status || 'todo',
-        priority: task.priority || 'medium',
-        assigneeId: task.assigneeId || '',
-        assignerId: task.assignerId || '',
-        dueDate: task.dueDate,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      set({ tasks: [...tasks, newTask] })
-      return
-    }
-
+  // ==================== TASK CRUD ====================
+  createTask: async (taskData) => {
     try {
-      const newTask = await teamflectApi.createTask(task)
-      set({ tasks: [...tasks, newTask] })
+      const newTask = await teamflectApi.tasks.create(taskData as any)
+      set((state) => ({ tasks: [...state.tasks, newTask] }))
+      return newTask
     } catch (error) {
-      console.error('Error creating task:', error)
+      console.error('[Store] Error creating task:', error)
       throw error
     }
   },
 
   updateTask: async (taskId, updates) => {
-    const { useMockData, tasks } = get()
-
-    if (useMockData) {
-      // Mock update
-      set({
-        tasks: tasks.map((t) =>
-          t.id === taskId ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
-        ),
-      })
-      return
-    }
-
     try {
-      const updatedTask = await teamflectApi.updateTask(taskId, updates)
-      set({
-        tasks: tasks.map((t) => (t.id === taskId ? updatedTask : t)),
-      })
+      const updatedTask = await teamflectApi.tasks.update(taskId, updates)
+      set((state) => ({
+        tasks: state.tasks.map((t) => (t.id === taskId ? updatedTask : t)),
+      }))
+      return updatedTask
     } catch (error) {
-      console.error('Error updating task:', error)
+      console.error('[Store] Error updating task:', error)
       throw error
     }
   },
 
-  toggleMockData: () => {
-    set((state) => ({ useMockData: !state.useMockData }))
-    get().fetchAllData()
+  deleteTask: async (taskId) => {
+    try {
+      await teamflectApi.tasks.delete(taskId)
+      set((state) => ({
+        tasks: state.tasks.filter((t) => t.id !== taskId),
+      }))
+    } catch (error) {
+      console.error('[Store] Error deleting task:', error)
+      throw error
+    }
+  },
+
+  completeTask: async (taskId) => {
+    try {
+      const updatedTask = await teamflectApi.tasks.complete(taskId)
+      set((state) => ({
+        tasks: state.tasks.map((t) => (t.id === taskId ? updatedTask : t)),
+      }))
+      return updatedTask
+    } catch (error) {
+      console.error('[Store] Error completing task:', error)
+      throw error
+    }
+  },
+
+  // ==================== GOAL CRUD ====================
+  createGoal: async (goalData) => {
+    try {
+      const newGoal = await teamflectApi.goals.create(goalData as any)
+      set((state) => ({ goals: [...state.goals, newGoal] }))
+      return newGoal
+    } catch (error) {
+      console.error('[Store] Error creating goal:', error)
+      throw error
+    }
+  },
+
+  updateGoal: async (goalId, updates) => {
+    try {
+      const updatedGoal = await teamflectApi.goals.update(goalId, updates)
+      set((state) => ({
+        goals: state.goals.map((g) => (g.id === goalId ? updatedGoal : g)),
+      }))
+      return updatedGoal
+    } catch (error) {
+      console.error('[Store] Error updating goal:', error)
+      throw error
+    }
+  },
+
+  updateGoalProgress: async (goalId, progress) => {
+    try {
+      const updatedGoal = await teamflectApi.goals.updateProgress(goalId, progress)
+      set((state) => ({
+        goals: state.goals.map((g) => (g.id === goalId ? updatedGoal : g)),
+      }))
+      return updatedGoal
+    } catch (error) {
+      console.error('[Store] Error updating goal progress:', error)
+      throw error
+    }
+  },
+
+  deleteGoal: async (goalId) => {
+    try {
+      await teamflectApi.goals.delete(goalId)
+      set((state) => ({
+        goals: state.goals.filter((g) => g.id !== goalId),
+      }))
+    } catch (error) {
+      console.error('[Store] Error deleting goal:', error)
+      throw error
+    }
+  },
+
+  // ==================== RECOGNITION CRUD ====================
+  createRecognition: async (recognitionData) => {
+    try {
+      const newRecognition = await teamflectApi.recognitions.create(recognitionData as any)
+      set((state) => ({ recognitions: [...state.recognitions, newRecognition] }))
+      return newRecognition
+    } catch (error) {
+      console.error('[Store] Error creating recognition:', error)
+      throw error
+    }
+  },
+
+  // ==================== FEEDBACK CRUD ====================
+  createFeedback: async (feedbackData) => {
+    try {
+      const newFeedback = await teamflectApi.feedback.create(feedbackData as any)
+      set((state) => ({ feedback: [...state.feedback, newFeedback] }))
+      return newFeedback
+    } catch (error) {
+      console.error('[Store] Error creating feedback:', error)
+      throw error
+    }
   },
 }))
