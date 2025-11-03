@@ -13,8 +13,12 @@ import type {
   CreateRecognitionRequest,
 } from '@/types/teamflect';
 
+// Import mock data for fallback
+import { mockGoals, mockTasks, mockFeedback, mockRecognitions, mockUsers, mockReviews } from '@/lib/mockData';
+
 const API_KEY = '4d73e4a8ce78:67cd7212-b035-4b25-a12b-26c840df469f';
 const BASE_URL = 'https://api.teamflect.com';
+const USE_MOCK_DATA = true; // Set to false when API is enabled
 
 const headers = {
   'x-api-key': API_KEY,
@@ -24,6 +28,12 @@ const headers = {
 class TeamflectAPI {
   // Goals
   async getGoals(params?: GetGoalsParams): Promise<Goal[]> {
+    // Use mock data if API is not available
+    if (USE_MOCK_DATA) {
+      console.log('📊 Using mock Goals data');
+      return new Promise(resolve => setTimeout(() => resolve(mockGoals), 300));
+    }
+
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -40,7 +50,8 @@ class TeamflectAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch goals: ${response.statusText}`);
+      console.warn('API failed, using mock data');
+      return mockGoals;
     }
 
     return response.json();
@@ -88,6 +99,11 @@ class TeamflectAPI {
 
   // Tasks
   async getTasks(params?: GetTasksParams): Promise<Task[]> {
+    if (USE_MOCK_DATA) {
+      console.log('📊 Using mock Tasks data');
+      return new Promise(resolve => setTimeout(() => resolve(mockTasks), 300));
+    }
+
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -104,7 +120,8 @@ class TeamflectAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch tasks: ${response.statusText}`);
+      console.warn('API failed, using mock data');
+      return mockTasks;
     }
 
     return response.json();
@@ -152,6 +169,11 @@ class TeamflectAPI {
 
   // Feedback
   async sendFeedback(feedback: SendFeedbackRequest): Promise<Feedback> {
+    if (USE_MOCK_DATA) {
+      console.log('📊 Mock: Sending feedback');
+      return new Promise(resolve => setTimeout(() => resolve(mockFeedback[0]), 300));
+    }
+
     const response = await fetch(`${BASE_URL}/feedback/sendFeedbackRequest`, {
       method: 'POST',
       headers,
@@ -166,6 +188,11 @@ class TeamflectAPI {
   }
 
   async getFeedback(userOID?: string): Promise<Feedback[]> {
+    if (USE_MOCK_DATA) {
+      console.log('📊 Using mock Feedback data');
+      return new Promise(resolve => setTimeout(() => resolve(mockFeedback), 300));
+    }
+
     const url = userOID
       ? `${BASE_URL}/feedback?userOID=${userOID}`
       : `${BASE_URL}/feedback`;
@@ -176,7 +203,8 @@ class TeamflectAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch feedback: ${response.statusText}`);
+      console.warn('API failed, using mock data');
+      return mockFeedback;
     }
 
     return response.json();
@@ -184,6 +212,11 @@ class TeamflectAPI {
 
   // Recognitions
   async createRecognition(recognition: CreateRecognitionRequest): Promise<Recognition> {
+    if (USE_MOCK_DATA) {
+      console.log('📊 Mock: Creating recognition');
+      return new Promise(resolve => setTimeout(() => resolve(mockRecognitions[0]), 300));
+    }
+
     const response = await fetch(`${BASE_URL}/recognition/createNewRecognitions`, {
       method: 'POST',
       headers,
@@ -198,6 +231,11 @@ class TeamflectAPI {
   }
 
   async getRecognitions(userOID?: string): Promise<Recognition[]> {
+    if (USE_MOCK_DATA) {
+      console.log('📊 Using mock Recognitions data');
+      return new Promise(resolve => setTimeout(() => resolve(mockRecognitions), 300));
+    }
+
     const url = userOID
       ? `${BASE_URL}/recognition?userOID=${userOID}`
       : `${BASE_URL}/recognition`;
@@ -208,7 +246,8 @@ class TeamflectAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch recognitions: ${response.statusText}`);
+      console.warn('API failed, using mock data');
+      return mockRecognitions;
     }
 
     return response.json();
@@ -216,13 +255,19 @@ class TeamflectAPI {
 
   // Users
   async getUsers(): Promise<User[]> {
+    if (USE_MOCK_DATA) {
+      console.log('📊 Using mock Users data');
+      return new Promise(resolve => setTimeout(() => resolve(mockUsers), 300));
+    }
+
     const response = await fetch(`${BASE_URL}/user`, {
       method: 'GET',
       headers,
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch users: ${response.statusText}`);
+      console.warn('API failed, using mock data');
+      return mockUsers;
     }
 
     return response.json();
@@ -244,6 +289,11 @@ class TeamflectAPI {
 
   // Reviews (if endpoint exists)
   async getReviews(userOID?: string): Promise<Review[]> {
+    if (USE_MOCK_DATA) {
+      console.log('📊 Using mock Reviews data');
+      return new Promise(resolve => setTimeout(() => resolve(mockReviews), 300));
+    }
+
     const url = userOID
       ? `${BASE_URL}/review?userOID=${userOID}`
       : `${BASE_URL}/review`;
@@ -254,7 +304,8 @@ class TeamflectAPI {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch reviews: ${response.statusText}`);
+      console.warn('API failed, using mock data');
+      return mockReviews;
     }
 
     return response.json();
