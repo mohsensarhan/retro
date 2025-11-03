@@ -1,73 +1,164 @@
-# Welcome to your Lovable project
+# Teamflect CEO Dashboard
 
-## Project info
+A stunning, modern, CEO-centric dashboard built with React, TypeScript, and the Teamflect API. Features full CRUD operations, beautiful animations, and responsive design.
 
-**URL**: https://lovable.dev/projects/78847321-0b8b-49c7-aeb1-aaf43b5b5ddf
+## Features
 
-## How can I edit this code?
+✨ **CEO-Centric Design**
+- High-level KPIs and metrics at a glance
+- Beautiful data visualizations
+- Single viewport layout
+- No clutter, just insights
 
-There are several ways of editing your application.
+🎨 **Beautiful UI/UX**
+- Smooth animations with Framer Motion
+- Responsive design (desktop & mobile)
+- Tooltips and contextual help
+- Modern gradient aesthetics
 
-**Use Lovable**
+🔧 **Full CRUD Operations**
+- Goals & OKRs management
+- Tasks tracking
+- Feedback system
+- Recognitions
+- User management
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/78847321-0b8b-49c7-aeb1-aaf43b5b5ddf) and start prompting.
+📊 **Real-time Data**
+- Live metrics from Teamflect API
+- Instant updates
+- Performance tracking
+- Team engagement analytics
 
-Changes made via Lovable will be committed automatically to this repo.
+## Tech Stack
 
-**Use your preferred IDE**
+- **Frontend**: React 19, TypeScript
+- **Styling**: Tailwind CSS v4
+- **Animations**: Framer Motion
+- **Data Fetching**: TanStack Query (React Query)
+- **Build Tool**: Vite
+- **Icons**: Lucide React
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Getting Started
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Prerequisites
 
-Follow these steps:
+- Node.js 18+
+- npm or yarn
+- Teamflect API access
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Installation
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd retro
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+2. Install dependencies:
+```bash
+npm install
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+3. Update API credentials in `src/api/teamflect.ts`:
+```typescript
+const API_KEY = 'your-api-key-here';
+```
+
+4. Start the development server:
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+5. Open [http://localhost:3000](http://localhost:3000)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Build for Production
 
-**Use GitHub Codespaces**
+```bash
+npm run build
+npm run preview
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+src/
+├── api/
+│   └── teamflect.ts          # Teamflect API client
+├── components/
+│   ├── Dashboard.tsx          # Main dashboard container
+│   ├── MetricsOverview.tsx    # CEO KPIs & metrics
+│   ├── GoalsPanel.tsx         # Goals & OKRs management
+│   ├── TasksPanel.tsx         # Tasks tracking
+│   ├── FeedbackPanel.tsx      # Feedback system
+│   ├── RecognitionsPanel.tsx  # Team recognitions
+│   ├── MetricCard.tsx         # Reusable metric card
+│   ├── ProgressRing.tsx       # Circular progress indicator
+│   └── GoalsChart.tsx         # Goals visualization
+├── hooks/
+│   └── useTeamflect.ts        # React Query hooks
+├── types/
+│   └── teamflect.ts           # TypeScript types
+├── lib/
+│   └── utils.ts               # Utility functions
+└── styles/
+    └── index.css              # Global styles
 
-This project is built with:
+## Teamflect API Integration
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+This dashboard integrates with the following Teamflect API endpoints:
 
-## How can I deploy this project?
+- `/goal/getGoals` - Fetch goals with filters
+- `/goal/createNewGoal` - Create new goals
+- `/goal/updateProgress` - Update goal progress
+- `/task` - Manage tasks
+- `/feedback/sendFeedbackRequest` - Send feedback
+- `/recognition/createNewRecognitions` - Create recognitions
+- `/user` - User management
+- `/review` - Performance reviews
 
-Simply open [Lovable](https://lovable.dev/projects/78847321-0b8b-49c7-aeb1-aaf43b5b5ddf) and click on Share -> Publish.
+## Features Overview
 
-## Can I connect a custom domain to my Lovable project?
+### Overview Dashboard
+- Total goals, tasks, team size
+- Goals health score
+- Task completion rate
+- Team engagement metrics
+- Upcoming deadlines
 
-Yes, you can!
+### Goals & OKRs
+- Create, read, delete goals
+- Track progress visually
+- Filter by status
+- Owner management
+- Due date tracking
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Tasks
+- Filter by status (all, todo, in-progress, completed)
+- Toggle task completion
+- Priority indicators
+- Due date tracking
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Feedback
+- View all feedback
+- Filter by type (praise, constructive, request)
+- Beautiful card layout
+- Sender/recipient tracking
+
+### Recognitions
+- Team appreciation system
+- Like functionality
+- Beautiful gradient design
+- Engagement tracking
+
+## Contributing
+
+This is a private project. For questions or contributions, please contact the project owner.
+
+## License
+
+Private - All Rights Reserved
+
+---
+
+Built with ❤️ for CEOs who demand excellence
+```

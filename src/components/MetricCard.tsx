@@ -1,131 +1,99 @@
-import React, { memo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
+import { TrendingUp, TrendingDown, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatMetricValue } from '@/lib/formatters';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface MetricCardProps {
   title: string;
   value: number;
-  format: 'number' | 'currency' | 'percentage' | 'simple';
-  prefix?: string;
-  suffix?: string;
-  change?: string;
-  trend?: 'up' | 'down' | 'stable';
-  icon?: React.ReactNode;
-  color?: 'success' | 'warning' | 'danger' | 'neutral' | 'primary';
-  description?: string;
-  interactive?: boolean;
-  onClick?: () => void;
+  total?: number;
+  icon: LucideIcon;
+  color: 'blue' | 'purple' | 'green' | 'amber' | 'red';
+  trend?: 'up' | 'down';
+  trendValue?: string;
 }
 
-const MetricCard = memo(({
-  title,
-  value,
-  format,
-  prefix,
-  suffix,
-  change,
-  trend,
-  icon,
-  color = 'primary',
-  description,
-  interactive = true,
-  onClick,
-}: MetricCardProps) => {
+const colorClasses = {
+  blue: 'from-blue-500 to-blue-600 shadow-blue-500/20',
+  purple: 'from-purple-500 to-purple-600 shadow-purple-500/20',
+  green: 'from-green-500 to-green-600 shadow-green-500/20',
+  amber: 'from-amber-500 to-amber-600 shadow-amber-500/20',
+  red: 'from-red-500 to-red-600 shadow-red-500/20',
+};
 
-  const getTrendIcon = () => {
-    switch (trend) {
-      case 'up':
-        return <TrendingUp className="w-4 h-4" />;
-      case 'down':
-        return <TrendingDown className="w-4 h-4" />;
-      case 'stable':
-        return <Minus className="w-4 h-4" />;
-      default:
-        return null;
-    }
-  };
+const iconBgClasses = {
+  blue: 'bg-blue-100',
+  purple: 'bg-purple-100',
+  green: 'bg-green-100',
+  amber: 'bg-amber-100',
+  red: 'bg-red-100',
+};
 
-  const getColorClasses = () => {
-    const baseClasses = "metric-card group";
-    switch (color) {
-      case 'success':
-        return cn(baseClasses, "border-l-4 border-l-success hover:shadow-glow hover:border-success/50");
-      case 'warning':
-        return cn(baseClasses, "border-l-4 border-l-warning hover:shadow-[0_0_30px_hsl(var(--warning)/0.3)]");
-      case 'danger':
-        return cn(baseClasses, "border-l-4 border-l-danger hover:shadow-[0_0_30px_hsl(var(--danger)/0.3)]");
-      case 'neutral':
-        return cn(baseClasses, "border-l-4 border-l-neutral hover:shadow-[0_0_30px_hsl(0_0%_100%/0.1)]");
-      default:
-        return cn(baseClasses, "border-l-4 border-l-primary hover:shadow-glow");
-    }
-  };
+const iconColorClasses = {
+  blue: 'text-blue-600',
+  purple: 'text-purple-600',
+  green: 'text-green-600',
+  amber: 'text-amber-600',
+  red: 'text-red-600',
+};
 
+export function MetricCard({ title, value, total, icon: Icon, color, trend, trendValue }: MetricCardProps) {
   return (
-    <Card 
-      className={cn(
-        getColorClasses(),
-        interactive && "cursor-pointer transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-      )}
-      onClick={interactive ? onClick : undefined}
-      role={interactive ? "button" : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      aria-label={interactive ? `View details for ${title}` : undefined}
-      onKeyDown={interactive ? (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick?.();
-        }
-      } : undefined}
+    <motion.div
+      className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all cursor-pointer relative overflow-hidden group"
+      whileHover={{ y: -4, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
     >
-      <CardContent className="p-4 sm:p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className={cn(
-            "p-2 rounded-lg",
-            color === 'success' && "bg-success/10 text-success",
-            color === 'warning' && "bg-warning/10 text-warning", 
-            color === 'danger' && "bg-danger/10 text-danger",
-            color === 'neutral' && "bg-neutral/10 text-neutral",
-            color === 'primary' && "bg-primary/10 text-primary"
-          )} aria-hidden="true">
-            {icon}
-          </div>
-          {change && (
-            <Badge 
-              variant="outline" 
-              className={cn(
-                "text-xs font-medium",
-                trend === 'up' && "text-success border-success",
-                trend === 'down' && "text-danger border-danger",
-                trend === 'stable' && "text-muted-foreground border-muted-foreground"
-              )}
-              aria-label={`Trend: ${trend}, Change: ${change}`}
-            >
-              <span aria-hidden="true">{getTrendIcon()}</span>
-              <span className="ml-1">{change}</span>
-            </Badge>
+      {/* Background Gradient on Hover */}
+      <div className={cn(
+        "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-5 transition-opacity",
+        colorClasses[color]
+      )} />
+
+      <div className="relative">
+        {/* Icon */}
+        <div className={cn("inline-flex p-3 rounded-xl mb-4", iconBgClasses[color])}>
+          <Icon className={cn("w-6 h-6", iconColorClasses[color])} />
+        </div>
+
+        {/* Title */}
+        <h3 className="text-sm font-medium text-slate-600 mb-2">{title}</h3>
+
+        {/* Value */}
+        <div className="flex items-baseline space-x-2 mb-3">
+          <motion.span
+            className="text-3xl font-bold text-slate-900"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+          >
+            {value}
+          </motion.span>
+          {total !== undefined && (
+            <span className="text-lg text-slate-400">/ {total}</span>
           )}
         </div>
-        
-        <div className="space-y-2">
-          <p className="metric-label text-sm sm:text-base">{title}</p>
-          <div className="flex items-baseline gap-1">
-            {prefix && <span className="text-base sm:text-lg font-semibold text-muted-foreground">{prefix}</span>}
-            <span className="metric-value text-xl sm:text-2xl">{formatMetricValue(value, format)}</span>
-            {suffix && <span className="text-base sm:text-lg font-semibold text-muted-foreground">{suffix}</span>}
+
+        {/* Trend */}
+        {(trend || trendValue) && (
+          <div className="flex items-center space-x-2">
+            {trend && (
+              <div className={cn(
+                "flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium",
+                trend === 'up' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+              )}>
+                {trend === 'up' ? (
+                  <TrendingUp className="w-3 h-3" />
+                ) : (
+                  <TrendingDown className="w-3 h-3" />
+                )}
+              </div>
+            )}
+            {trendValue && (
+              <span className="text-xs text-slate-500">{trendValue}</span>
+            )}
           </div>
-          {description && (
-            <p className="text-xs sm:text-sm text-muted-foreground mt-2">{description}</p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        )}
+      </div>
+    </motion.div>
   );
-});
-
-MetricCard.displayName = 'MetricCard';
-
-export { MetricCard };
+}
