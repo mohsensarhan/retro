@@ -18,7 +18,10 @@ export function TasksPanel({ tasks }: TasksPanelProps) {
 
   const toggleTaskStatus = async (task: Task) => {
     const newStatus = task.status === 'completed' ? 'todo' : 'completed';
-    await updateTaskMutation.mutateAsync({ ...task, status: newStatus });
+    await updateTaskMutation.mutateAsync({
+      taskId: task.id,
+      data: { status: newStatus }
+    });
   };
 
   return (

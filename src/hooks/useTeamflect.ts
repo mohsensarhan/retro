@@ -1,127 +1,112 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { teamflectAPI } from '@/api/teamflect';
-import type {
-  GetGoalsParams,
-  CreateGoalRequest,
-  UpdateGoalRequest,
-  SendFeedbackRequest,
-  CreateRecognitionRequest,
-} from '@/types/teamflect';
+import { trpc } from '@/lib/trpc';
 
-// Goals Hooks
-export function useGoals(params?: GetGoalsParams) {
-  return useQuery({
-    queryKey: ['goals', params],
-    queryFn: () => teamflectAPI.getGoals(params),
-  });
-}
+// Goals Hooks - Now using tRPC
+export const useGoals = (params?: { limit?: number; offset?: number; status?: string; ownerId?: string }) => {
+  return trpc.goals.getAll.useQuery(params);
+};
 
-export function useCreateGoal() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (goal: CreateGoalRequest) => teamflectAPI.createGoal(goal),
+export const useCreateGoal = () => {
+  const utils = trpc.useContext();
+  return trpc.goals.create.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['goals'] });
+      utils.goals.getAll.invalidate();
     },
   });
-}
+};
 
-export function useUpdateGoal() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (goal: UpdateGoalRequest) => teamflectAPI.updateGoal(goal),
+export const useUpdateGoal = () => {
+  const utils = trpc.useContext();
+  return trpc.goals.updateProgress.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['goals'] });
+      utils.goals.getAll.invalidate();
     },
   });
-}
+};
 
-export function useDeleteGoal() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (goalId: string) => teamflectAPI.deleteGoal(goalId),
+export const useDeleteGoal = () => {
+  const utils = trpc.useContext();
+  return trpc.goals.delete.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['goals'] });
+      utils.goals.getAll.invalidate();
     },
   });
-}
+};
 
-// Tasks Hooks
-export function useTasks(params?: any) {
-  return useQuery({
-    queryKey: ['tasks', params],
-    queryFn: () => teamflectAPI.getTasks(params),
-  });
-}
+// Tasks Hooks - Now using tRPC
+export const useTasks = (params?: { limit?: number; offset?: number; status?: string }) => {
+  return trpc.tasks.getAll.useQuery(params);
+};
 
-export function useCreateTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (task: any) => teamflectAPI.createTask(task),
+export const useCreateTask = () => {
+  const utils = trpc.useContext();
+  return trpc.tasks.create.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      utils.tasks.getAll.invalidate();
     },
   });
-}
+};
 
-export function useUpdateTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (task: any) => teamflectAPI.updateTask(task),
+export const useUpdateTask = () => {
+  const utils = trpc.useContext();
+  return trpc.tasks.update.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      utils.tasks.getAll.invalidate();
     },
   });
-}
+};
 
-// Feedback Hooks
-export function useFeedback(userOID?: string) {
-  return useQuery({
-    queryKey: ['feedback', userOID],
-    queryFn: () => teamflectAPI.getFeedback(userOID),
-  });
-}
-
-export function useSendFeedback() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (feedback: SendFeedbackRequest) => teamflectAPI.sendFeedback(feedback),
+export const useDeleteTask = () => {
+  const utils = trpc.useContext();
+  return trpc.tasks.delete.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feedback'] });
+      utils.tasks.getAll.invalidate();
     },
   });
-}
+};
 
-// Recognition Hooks
-export function useRecognitions(userOID?: string) {
-  return useQuery({
-    queryKey: ['recognitions', userOID],
-    queryFn: () => teamflectAPI.getRecognitions(userOID),
-  });
-}
+// Feedback Hooks - Now using tRPC
+export const useFeedback = (params?: { limit?: number; offset?: number }) => {
+  return trpc.feedback.getAll.useQuery(params);
+};
 
-export function useCreateRecognition() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (recognition: CreateRecognitionRequest) => teamflectAPI.createRecognition(recognition),
+export const useSendFeedback = () => {
+  const utils = trpc.useContext();
+  return trpc.feedback.send.useMutation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['recognitions'] });
+      utils.feedback.getAll.invalidate();
     },
   });
-}
+};
 
-// Users Hooks
-export function useUsers() {
-  return useQuery({
-    queryKey: ['users'],
-    queryFn: () => teamflectAPI.getUsers(),
-  });
-}
+// Recognition Hooks - Now using tRPC
+export const useRecognitions = (params?: { limit?: number; offset?: number }) => {
+  return trpc.recognitions.getAll.useQuery(params);
+};
 
-// Reviews Hooks
-export function useReviews(userOID?: string) {
-  return useQuery({
-    queryKey: ['reviews', userOID],
-    queryFn: () => teamflectAPI.getReviews(userOID),
+export const useCreateRecognition = () => {
+  const utils = trpc.useContext();
+  return trpc.recognitions.create.useMutation({
+    onSuccess: () => {
+      utils.recognitions.getAll.invalidate();
+    },
   });
-}
+};
+
+export const useLikeRecognition = () => {
+  const utils = trpc.useContext();
+  return trpc.recognitions.like.useMutation({
+    onSuccess: () => {
+      utils.recognitions.getAll.invalidate();
+    },
+  });
+};
+
+// Users Hooks - Now using tRPC
+export const useUsers = (params?: { limit?: number; offset?: number }) => {
+  return trpc.users.getAll.useQuery(params);
+};
+
+// Reviews Hooks - Now using tRPC
+export const useReviews = (params?: { limit?: number; offset?: number }) => {
+  return trpc.reviews.getAll.useQuery(params);
+};

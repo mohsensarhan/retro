@@ -31,12 +31,19 @@ A stunning, modern, CEO-centric dashboard built with React, TypeScript, and the 
 
 ## Tech Stack
 
-- **Frontend**: React 19, TypeScript
+### Frontend
+- **Framework**: React 19, TypeScript
 - **Styling**: Tailwind CSS v4
 - **Animations**: Framer Motion
-- **Data Fetching**: TanStack Query (React Query)
+- **Data Fetching**: TanStack Query + tRPC Client
 - **Build Tool**: Vite
 - **Icons**: Lucide React
+
+### Backend
+- **Server**: Express + TypeScript
+- **API Layer**: tRPC (type-safe RPC)
+- **HTTP Client**: axios
+- **Runtime**: Node.js with tsx
 
 ## Getting Started
 
@@ -59,17 +66,26 @@ cd retro
 npm install
 ```
 
-3. Update API credentials in `src/api/teamflect.ts`:
-```typescript
-const API_KEY = 'your-api-key-here';
+3. Start both frontend and backend:
+```bash
+npm run dev:all
 ```
 
-4. Start the development server:
+Or start them separately:
 ```bash
+# Terminal 1 - Backend Server
+npm run dev:server
+
+# Terminal 2 - Frontend
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000)
+4. Open [http://localhost:5173](http://localhost:5173) for frontend
+5. Backend tRPC server runs on [http://localhost:3001](http://localhost:3001)
+
+### Configuration
+
+API credentials are configured in `server/teamflect.ts`. The backend automatically falls back to mock data if the API returns 403.
 
 ### Build for Production
 

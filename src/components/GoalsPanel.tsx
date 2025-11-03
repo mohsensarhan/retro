@@ -20,7 +20,7 @@ export function GoalsPanel({ goals }: GoalsPanelProps) {
     description: '',
     startDate: '',
     dueDate: '',
-    ownerOIDs: [] as string[],
+    ownerIds: [] as string[],
   });
 
   const handleCreateGoal = async () => {
@@ -28,7 +28,7 @@ export function GoalsPanel({ goals }: GoalsPanelProps) {
 
     await createGoalMutation.mutateAsync(newGoal);
     setIsCreating(false);
-    setNewGoal({ title: '', description: '', startDate: '', dueDate: '', ownerOIDs: [] });
+    setNewGoal({ title: '', description: '', startDate: '', dueDate: '', ownerIds: [] });
   };
 
   // Update handler commented for now - will be used when edit modal is implemented
@@ -45,7 +45,7 @@ export function GoalsPanel({ goals }: GoalsPanelProps) {
 
   const handleDeleteGoal = async (goalId: string) => {
     if (confirm('Are you sure you want to delete this goal?')) {
-      await deleteGoalMutation.mutateAsync(goalId);
+      await deleteGoalMutation.mutateAsync({ goalId });
     }
   };
 

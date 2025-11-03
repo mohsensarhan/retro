@@ -17,8 +17,8 @@ import type {
 import { mockGoals, mockTasks, mockFeedback, mockRecognitions, mockUsers, mockReviews } from '@/lib/mockData';
 
 const API_KEY = '4d73e4a8ce78:67cd7212-b035-4b25-a12b-26c840df469f';
-const BASE_URL = 'https://api.teamflect.com';
-const USE_MOCK_DATA = true; // Set to false when API is enabled
+const BASE_URL = 'https://api.teamflect.com/api/v1'; // Fixed: Added /api/v1
+const USE_MOCK_DATA = false; // Set to true to use mock data for testing
 
 const headers = {
   'x-api-key': API_KEY,
